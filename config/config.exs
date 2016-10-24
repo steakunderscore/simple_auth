@@ -17,6 +17,13 @@ config :simple_auth, SimpleAuth.Endpoint,
   pubsub: [name: SimpleAuth.PubSub,
            adapter: Phoenix.PubSub.PG2]
 
+config :guardian, Guardian,
+  issuer: "SimpleAuth.#{Mix.env}",
+  ttl: {30, :days},
+  verify_issuer: true,
+  serializer: SimpleAuth.GuardianSerializer,
+  secret_key: to_string(Mix.env) <> "SuPerseCret_aBraCadabrA"
+
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
