@@ -11,7 +11,7 @@ defmodule SimpleAuth.PostController do
           [conn, conn.params, conn.assigns.current_user])
   end
 
-  def index(conn, %{"user_id" => user_id}, current_user) do
+  def index(conn, %{"user_id" => user_id}, _current_user) do
     user = User |> Repo.get!(user_id)
 
     posts =
@@ -23,22 +23,70 @@ defmodule SimpleAuth.PostController do
     render(conn, "index.html", posts: posts, user: user)
   end
 
-  def show(conn, %{"id" => id}, current_user) do
+  def show(conn, %{"user_id" => user_id, "id" => id}, _current_user) do
+    user = User |> Repo.get!(user_id)
+    post = user |> user_post_by_id(id) |> Repo.preload(:user)
+
+    render(conn, "show.html", post: post, user: user)
   end
 
   def new(conn, _params, current_user) do
+    changeset =
+      current_user
+      |> build_assoc(:posts)
+      |> Post.changeset
+
+    conn
+    |> render("new.html", changeset: changeset)
   end
 
   def create(conn, %{"post" => post_params}, current_user) do
+    changeset =
+      current_user
+      |> build_assoc(:posts)
+      |> Post.changeset(post_params)
+
+    case Repo.insert(changeset) do
+      {:ok, _} ->
+        conn
+        |> put_flash(:info, "Post was successfuly created")
+        |> redirect(to: user_post_path(conn, :index, current_user.id))
+      {:error, changeset} ->
+        render(conn, "new.html", changeset: changeset)
+    end
   end
 
   def edit(conn, %{"id" => id}, current_user) do
+    post =
+      current_user
+      |> user_post_by_id(id)
+
+    changeset = Post.changeset(post)
+    conn
+    |> render("edit.html", post: post, changeset: changeset)
   end
 
   def update(conn, %{"id" => id, "post" => post_params}, current_user) do
+    post = current_user |> user_post_by_id(id)
+
+    changeset = Post.changeset(post, post_params)
+
+    case Repo.update(changeset) do
+       {:ok, _} ->
+         conn
+         |> put_flash(:info, "Post was successfully updated")
+         |> redirect(to: user_post_path(conn, :show, current_user.id, post.id))
+       {:error, changeset} ->
+         render(conn, "edit.html", post: post, changeset: changeset)
+    end
   end
 
   def delete(conn, %{"id" => id}, current_user) do
+    current_user |> user_post_by_id(id) |> Repo.delete!
+
+    conn
+    |> put_flash(:info, "Post was deleted successfully!")
+    |> redirect(to: user_post_path(conn, :index, current_user.id))
   end
 
   defp user_posts(user) do
