@@ -10,6 +10,8 @@ defmodule SimpleAuth.Router do
   end
 
   pipeline :login_required do
+    plug Guardian.Plug.EnsureAuthenticated,
+         handler: SimpleAuth.GuardianErrorHandler
   end
 
   pipeline :admin_required do
